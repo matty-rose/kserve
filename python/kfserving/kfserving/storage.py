@@ -13,21 +13,23 @@
 # limitations under the License.
 
 import glob
+import gzip
 import logging
-import tempfile
 import mimetypes
 import os
 import re
 import shutil
 import tarfile
+import tempfile
 import zipfile
-import gzip
 from urllib.parse import urlparse
-import requests 
-from azure.storage.blob import BlockBlobService
+
+import requests
+from azure.storage.blob import BlobServiceClient
 from google.auth import exceptions
 from google.cloud import storage
 from minio import Minio
+
 from kfserving.kfmodel_repository import MODEL_MOUNT_DIRS
 
 _GCS_PREFIX = "gs://"
@@ -143,14 +145,16 @@ The path or model %s does not exist." % (uri))
                      container_name,
                      prefix)
         try:
-            block_blob_service = BlockBlobService(account_name=account_name)
-            blobs = block_blob_service.list_blobs(container_name, prefix=prefix)
+            blob_service_client = BlobServiceClient(account_url=uri)
+            blob_container = blob_service_client.get_container_client(container_name)
+            blobs = blob_container.list_blobs(name_starts_with=prefix)
         except Exception: # pylint: disable=broad-except
             token = Storage._get_azure_storage_token()
             if token is None:
                 logging.warning("Azure credentials not found, retrying anonymous access")
-            block_blob_service = BlockBlobService(account_name=account_name, token_credential=token)
-            blobs = block_blob_service.list_blobs(container_name, prefix=prefix)
+            blob_service_client = BlobServiceClient(account_url=uri, credential=token)
+            blob_container = blob_service_client.get_container_client(container_name)
+            blobs = blob_container.list_blobs(name_starts_with=prefix)
         count = 0
         for blob in blobs:
             dest_path = os.path.join(out_dir, blob.name)
@@ -166,7 +170,8 @@ The path or model %s does not exist." % (uri))
                     os.makedirs(dir_path)
 
             logging.info("Downloading: %s to %s", blob.name, dest_path)
-            block_blob_service.get_blob_to_path(container_name, blob.name, dest_path)
+            with open(dest_path, "wb") as download_file:
+                download_file.write(blob_container.download_blob(blob.name).readall())
             count = count + 1
         if count == 0:
             raise RuntimeError("Failed to fetch model. \
