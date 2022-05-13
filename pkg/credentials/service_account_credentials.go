@@ -44,6 +44,7 @@ const (
 	StorageConfigEnvKey         = "STORAGE_CONFIG"
 	StorageOverrideConfigEnvKey = "STORAGE_OVERRIDE_CONFIG"
 	DefaultStorageSecretKey     = "default"
+	AwsIrsaAnnotationKey        = "eks.amazonaws.com/role-arn"
 	UnsupportedStorageSpecType  = "storage type must be one of [%s]. storage type [%s] is not supported"
 	MissingBucket               = "format [%s] requires a bucket but one wasn't found in storage data or parameters"
 )
@@ -194,6 +195,13 @@ func (c *CredentialBuilder) CreateSecretVolumeAndEnv(namespace string, serviceAc
 		return nil
 	}
 
+	for annotationKey, annotationValue := range serviceAccount.Annotations {
+		log.Info("found annotation", "Annotation", annotationKey, annotationValue)
+		if annotationKey == AwsIrsaAnnotationKey {
+			// Add env vars from s3configmap
+		}
+	}
+
 	for _, secretRef := range serviceAccount.Secrets {
 		log.Info("found secret", "SecretName", secretRef.Name)
 		secret := &v1.Secret{}
@@ -206,7 +214,9 @@ func (c *CredentialBuilder) CreateSecretVolumeAndEnv(namespace string, serviceAc
 		if _, ok := secret.Data[s3SecretAccessKeyName]; ok {
 			log.Info("Setting secret envs for s3", "S3Secret", secret.Name)
 			envs := s3.BuildSecretEnvs(secret, &c.config.S3)
-			container.Env = append(container.Env, envs...)
+			// TODO: merge these envs so that the ones from the service account annotation are overridden?
+			container.Env = mergeEnvs(container.Env, envs)
+			// container.Env = append(container.Env, envs...)
 		} else if _, ok := secret.Data[gcsCredentialFileName]; ok {
 			log.Info("Setting secret volume for gcs", "GCSSecret", secret.Name)
 			volume, volumeMount := gcs.BuildSecretVolume(secret)
@@ -241,4 +251,25 @@ func (c *CredentialBuilder) CreateSecretVolumeAndEnv(namespace string, serviceAc
 	}
 
 	return nil
+}
+
+func mergeEnvs(baseEnvs []v1.EnvVar, overrideEnvs []v1.EnvVar) []v1.EnvVar {
+	var extra []v1.EnvVar
+
+	for _, override := range overrideEnvs {
+		for _, base := range baseEnvs {
+			overridden := false
+
+			if override.Name == base.Name {
+				base.Value = override.Value
+				overridden = true
+			}
+
+			if !overridden {
+				extra = append(extra, override)
+			}
+		}
+	}
+
+	return append(baseEnvs, extra...)
 }

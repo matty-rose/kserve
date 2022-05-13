@@ -151,6 +151,13 @@ data:
        "s3": {
            "s3AccessKeyIDName": "AWS_ACCESS_KEY_ID",
            "s3SecretAccessKeyName": "AWS_SECRET_ACCESS_KEY"
+           "s3Endpoint": "s3.amazonaws.com"
+           "s3Region": ""
+           "s3VerifySSL": ""
+           "s3UseHttps": ""
+           "s3UseVirtualBucket": ""
+           "s3UseAnonCredential": ""
+           "s3CABundle": ""
        }
     }
   ingress: |-

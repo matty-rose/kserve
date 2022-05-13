@@ -46,6 +46,11 @@ type S3Config struct {
 	S3SecretAccessKeyName string `json:"s3SecretAccessKeyName,omitempty"`
 	S3Endpoint            string `json:"s3Endpoint,omitempty"`
 	S3UseHttps            string `json:"s3UseHttps,omitempty"`
+	S3Region              string `json:"s3Region,omitempty"`
+	S3VerifySSL           string `json:"s3VerifySSL,omitempty"`
+	S3UseVirtualBucket    string `json:"s3UseVirtualBucket,omitempty"`
+	S3UseAnonCredential   string `json:"s3UseAnonCredential,omitempty"`
+	S3CABundle            string `json:"s3CABundle,omitempty"`
 }
 
 var (

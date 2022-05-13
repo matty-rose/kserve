@@ -635,3 +635,6 @@ func TestAzureStorageAccessKeyCredentialBuilder(t *testing.T) {
 	g.Expect(c.Delete(context.TODO(), customAzureSecret)).NotTo(gomega.HaveOccurred())
 	g.Expect(c.Delete(context.TODO(), customOnlyServiceAccount)).NotTo(gomega.HaveOccurred())
 }
+func TestMergeEnvs(t *testing.T) {
+
+}
